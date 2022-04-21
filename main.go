@@ -45,16 +45,13 @@ type idea struct {
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	body := &webHookReqBody{}
 
-	if err := json.NewDecoder(r.Body).Decode(body); err != nil {
-		log.Printf("An error occured (webHookHandler)")
-		log.Printf("error %v", err)
-		log.Panic(err)
+	err := json.NewDecoder(r.Body).Decode(body)
+	if err != nil {
+		fmt.Println("webhookHandler: error %w", err)
 		return
 	}
 
 	commands := strings.ToLower(body.Message.Text)
-
-	err := errors.New("")
 
 	switch commands {
 	case "/joke":
@@ -64,10 +61,9 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Bot Commands: error %w", err)
 		return
 	}
-
 }
 
 type Commands func() (string, error)
@@ -114,7 +110,7 @@ func jokeFetcher() (string, error) {
 	resp, err := http.Get("http://api.icndb.com/jokes/random")
 	c := &joke{}
 	if err != nil {
-		return "", nil
+		return "", fmt.Errorf("jokeFetcher: error %w", err)
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(c)
@@ -126,26 +122,23 @@ func scrapIdea() (string, error) {
 
 	res, err := http.Get(url)
 	if err != nil {
-		log.Fatal(err)
-		return "", err
+		return "", fmt.Errorf("scrapIdea: error %w", err)
 	}
 
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
-		return "", err
+		return "", fmt.Errorf("status code error: %d %s", res.StatusCode, res.Status)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		log.Fatal(err)
-		return "", err
+		return "", fmt.Errorf("goquery unable read body: %w", err)
 	}
 
 	idea := &idea{}
 
-	idea.Content = "Idea:" + doc.Find("h2").Text()
+	idea.Content = doc.Find("h2").Text()
 
 	return idea.Content, nil
 }
