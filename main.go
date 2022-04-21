@@ -64,7 +64,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 		return
 	}
 
