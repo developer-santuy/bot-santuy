@@ -51,41 +51,51 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	commands := strings.ToLower(body.Message.Text)
-
-	switch commands {
-	case "/joke":
-		err = sendReply(body.Message.Chat.ID, jokeFetcher)
-	case "/idea":
-		err = sendReply(body.Message.Chat.ID, scrapIdea)
-	}
+	err = sendReply(body.Message)
 
 	if err != nil {
-		fmt.Println("Bot Commands: error %w", err)
-		return
+		fmt.Printf("Something happen: %v", err)
 	}
 }
 
-type Commands func() (string, error)
-
-func sendReply(chatID int64, commands Commands) error {
+func sendReply(m Message) error {
 	fmt.Println("sendReply called")
 
 	var botToken string = os.Getenv("BOT_TOKEN")
 
-	text, err := commands()
+	commands := strings.ToLower(m.Text)
+	text := ""
+	var err error = nil
+
+	switch commands {
+	case "/joke":
+		text, err = jokeFetcher()
+	case "/idea":
+		text, err = scrapIdea()
+	}
+
+	callAI := strings.Split(m.Text, ",")
+
+	if callAI[0] == "AI" {
+		text, err = friendlyBot(commands)
+	}
+
 	if err != nil {
-		return err
+		log.Fatal(err)
+		return fmt.Errorf("bot Commands: error %v", err)
 	}
 
 	reqBody := &sendMessageReqBody{
-		ChatID: chatID,
+		ChatID: m.Chat.ID,
 		Text:   text,
 	}
 
+	fmt.Printf("reqbody %v:", reqBody)
 	reqBytes, err := json.Marshal(reqBody)
+
 	if err != nil {
-		return err
+		log.Fatal(err)
+		return fmt.Errorf("bot Commands: error %v", err)
 	}
 
 	resp, err := http.Post(
@@ -94,7 +104,8 @@ func sendReply(chatID int64, commands Commands) error {
 		bytes.NewBuffer(reqBytes),
 	)
 	if err != nil {
-		return err
+		log.Fatal(err)
+		return fmt.Errorf("failed make request to telegram: error %v", err)
 	}
 
 	defer resp.Body.Close()
