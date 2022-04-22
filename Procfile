@@ -1,1 +1,1 @@
-web: bin/report-bot
+web: bin/bot-santuy
