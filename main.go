@@ -19,12 +19,16 @@ type webHookReqBody struct {
 }
 
 type Message struct {
-	Text string `json:"text"`
-	Chat `json:"chat"`
+	MessageID      int64  `json:"message_id"`
+	Text           string `json:"text"`
+	Chat           `json:"chat"`
+	ReplyToMessage *Message `json:"reply_to_message,omitempty"`
 }
 
 type Chat struct {
-	ID int64 `json:"id"`
+	ID        int64  `json:"id"`
+	Firstname string `json:"first_name"`
+	Lastname  string `json:"last_name"`
 }
 
 type joke struct {
@@ -34,8 +38,9 @@ type joke struct {
 }
 
 type sendMessageReqBody struct {
-	ChatID int64  `json:"chat_id"`
-	Text   string `json:"text"`
+	ChatID           int64  `json:"chat_id"`
+	Text             string `json:"text"`
+	ReplyToMessageID int64  `json:"reply_to_message_id"`
 }
 
 type idea struct {
@@ -74,10 +79,14 @@ func sendReply(m Message) error {
 		text, err = scrapIdea()
 	}
 
-	callAI := strings.Split(m.Text, ",")
+	AIname := strings.Split(m.Text, ",")[0]
 
-	if callAI[0] == "AI" {
-		text, err = friendlyBot(commands)
+	if AIname == "AI" {
+		text, err = friendlyBot(AIname, m)
+	}
+
+	if AIname == "Cuy" {
+		text, err = sarcasticBot(AIname, m)
 	}
 
 	if err != nil {
@@ -86,8 +95,9 @@ func sendReply(m Message) error {
 	}
 
 	reqBody := &sendMessageReqBody{
-		ChatID: m.Chat.ID,
-		Text:   text,
+		ChatID:           m.Chat.ID,
+		Text:             text,
+		ReplyToMessageID: m.MessageID,
 	}
 
 	fmt.Printf("reqbody %v:", reqBody)
